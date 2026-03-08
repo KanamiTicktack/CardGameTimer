@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>カードゲーム用 対面タイマー（枠線修正版）</title>
+    <title>カードゲーム用 対面タイマー</title>
     
     <!-- PWA用の設定 -->
     <link rel="manifest" href="./manifest.json">
@@ -15,7 +15,6 @@
         @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
         
         * {
-            /* タップ時のハイライトやフォーカス時の枠線を完全に消す */
             -webkit-tap-highlight-color: transparent;
             outline: none;
         }
@@ -32,19 +31,10 @@
             font-family: 'Roboto Mono', monospace;
         }
 
-        /* コインの3D回転用CSS */
-        .preserve-3d {
-            transform-style: preserve-3d;
-        }
-        .backface-hidden {
-            backface-visibility: hidden;
-            -webkit-backface-visibility: hidden;
-        }
-        .rotate-y-180 {
-            transform: rotateY(180deg);
-        }
+        .preserve-3d { transform-style: preserve-3d; }
+        .backface-hidden { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+        .rotate-y-180 { transform: rotateY(180deg); }
 
-        /* ドラムロール設定（スワイプ）用CSS */
         .drum-container {
             height: 150px;
             overflow: hidden;
@@ -82,22 +72,13 @@
             font-weight: 700;
         }
 
-        /* 縦画面時の警告画面 */
-        #rotate-warning {
-            display: none;
-        }
+        #rotate-warning { display: none; }
         @media (orientation: landscape) {
-            #rotate-warning {
-                display: flex;
-            }
-            #app-content {
-                display: none;
-            }
+            #rotate-warning { display: flex; }
+            #app-content { display: none; }
         }
 
-        .blinking {
-            animation: blink 1s infinite;
-        }
+        .blinking { animation: blink 1s infinite; }
         @keyframes blink {
             0%, 100% { opacity: 1; color: #f87171; }
             50% { opacity: 0.5; color: #fca5a5; }
@@ -106,7 +87,7 @@
 </head>
 <body class="text-white w-screen h-screen overflow-hidden relative">
 
-    <div id="rotate-warning" class="absolute inset-0 z-50 bg-slate-900 flex-col items-center justify-center text-center p-6">
+    <div id="rotate-warning" class="absolute inset-0 z-50 bg-slate-900 flex-col items-center justify-center text-center p-6 z-50">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mb-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
         </svg>
@@ -120,7 +101,8 @@
         <!-- ================================================== -->
         <!-- 上半分：相手(上側)の陣地 -->
         <!-- ================================================== -->
-        <div class="flex-1 flex flex-col items-center justify-between py-4 sm:py-6 rotate-180 relative border-t-2 border-slate-800/50 bg-gradient-to-t from-slate-900 to-slate-800/30">
+        <!-- border-t-2 を削除し、滑らかなグラデーションのみに変更 -->
+        <div class="flex-1 flex flex-col items-center justify-between py-4 sm:py-6 rotate-180 relative bg-gradient-to-t from-slate-900 to-slate-800/20">
             <div class="w-full h-32 sm:h-40 md:h-48 pointer-events-none"></div>
             
             <div class="flex flex-col items-center gap-4 sm:gap-6 z-10">
@@ -136,7 +118,7 @@
                         <svg id="playIconA" xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 sm:w-8 sm:h-8 fill-current ml-1" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                         <svg id="pauseIconA" xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 sm:w-8 sm:h-8 fill-current hidden" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
                     </button>
-                    <button id="resetBtnA" class="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-slate-700/80 hover:bg-slate-600 flex items-center justify-center transition-all active:scale-95 shadow-lg backdrop-blur-sm">
+                    <button id="resetBtnA" class="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-slate-700/80 hover:bg-slate-600 flex items-center justify-center transition-all active:scale-95 shadow-[0_0_15px_rgba(0,0,0,0.5)] backdrop-blur-sm">
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 sm:w-8 sm:h-8 fill-current" viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
                     </button>
                 </div>
@@ -150,7 +132,7 @@
         <!-- ================================================== -->
         <!-- 下半分：自分(下側)の陣地 -->
         <!-- ================================================== -->
-        <div class="flex-1 flex flex-col items-center justify-between py-4 sm:py-6 relative border-t-2 border-slate-800/50 bg-gradient-to-t from-slate-900 to-slate-800/30">
+        <div class="flex-1 flex flex-col items-center justify-between py-4 sm:py-6 relative bg-gradient-to-t from-slate-900 to-slate-800/20">
             <div class="w-full h-32 sm:h-40 md:h-48 pointer-events-none"></div>
             
             <div class="flex flex-col items-center gap-4 sm:gap-6 z-10">
@@ -166,7 +148,7 @@
                         <svg id="playIconB" xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 sm:w-8 sm:h-8 fill-current ml-1" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                         <svg id="pauseIconB" xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 sm:w-8 sm:h-8 fill-current hidden" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
                     </button>
-                    <button id="resetBtnB" class="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-slate-700/80 hover:bg-slate-600 flex items-center justify-center transition-all active:scale-95 shadow-lg backdrop-blur-sm">
+                    <button id="resetBtnB" class="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-slate-700/80 hover:bg-slate-600 flex items-center justify-center transition-all active:scale-95 shadow-[0_0_15px_rgba(0,0,0,0.5)] backdrop-blur-sm">
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 sm:w-8 sm:h-8 fill-current" viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
                     </button>
                 </div>
@@ -182,22 +164,27 @@
         <!-- ================================================== -->
         <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none z-20">
             
-            <!-- ★修正点: SVG全体にかかっていた drop-shadow クラスを削除しました -->
-            <svg id="gaugeSvg" class="w-[85vw] h-[85vw] max-w-[340px] max-h-[340px] sm:max-w-[420px] sm:max-h-[420px]" viewBox="0 0 300 300">
+            <!-- ★ viewBoxを大きくし(360x360)、overflow-visibleを追加して光が切り取られないように修正 -->
+            <svg id="gaugeSvg" class="w-[85vw] h-[85vw] max-w-[340px] max-h-[340px] sm:max-w-[420px] sm:max-h-[420px] overflow-visible" viewBox="0 0 360 360">
                 <g id="ticksGroup"></g>
             </svg>
 
+            <!-- ★ コインの親要素から 3Dの影を削除し、内部の面にのみ影をつけるよう修正 -->
             <div class="absolute w-24 h-24 sm:w-32 sm:h-32 md:w-36 md:h-36 pointer-events-auto cursor-pointer transition-transform duration-100 active:scale-95" onclick="flipCoin()" title="タップしてコイントス">
-                <div id="coinInner" class="relative w-full h-full transition-transform duration-[1500ms] preserve-3d ease-out shadow-2xl rounded-full" style="transform: rotateY(0deg);">
-                    <div class="absolute inset-0 rounded-full bg-gradient-to-br from-yellow-300 to-yellow-600 border-4 border-yellow-200 flex flex-col items-center justify-center text-yellow-900 backface-hidden shadow-[inset_0_0_15px_rgba(0,0,0,0.4)]">
+                <div id="coinInner" class="relative w-full h-full transition-transform duration-[1500ms] preserve-3d ease-out rounded-full" style="transform: rotateY(0deg);">
+                    
+                    <!-- コインの表面 (個別に影を設定) -->
+                    <div class="absolute inset-0 rounded-full bg-gradient-to-br from-yellow-300 to-yellow-600 border-4 border-yellow-200 flex flex-col items-center justify-center text-yellow-900 backface-hidden shadow-[0_10px_25px_rgba(0,0,0,0.6),inset_0_0_15px_rgba(0,0,0,0.4)]">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 sm:h-10 sm:w-10 mb-1" viewBox="0 0 20 20" fill="currentColor"><path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4z" /></svg>
                         <span class="text-xl sm:text-2xl font-black tracking-widest">表</span>
                     </div>
 
-                    <div class="absolute inset-0 rounded-full bg-gradient-to-br from-slate-200 to-slate-500 border-4 border-slate-100 flex flex-col items-center justify-center text-slate-800 backface-hidden rotate-y-180 shadow-[inset_0_0_15px_rgba(0,0,0,0.4)]">
+                    <!-- コインの裏面 (個別に影を設定) -->
+                    <div class="absolute inset-0 rounded-full bg-gradient-to-br from-slate-200 to-slate-500 border-4 border-slate-100 flex flex-col items-center justify-center text-slate-800 backface-hidden rotate-y-180 shadow-[0_10px_25px_rgba(0,0,0,0.6),inset_0_0_15px_rgba(0,0,0,0.4)]">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 sm:h-10 sm:w-10 mb-1 opacity-80" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 2a8 8 0 100 16 8 8 0 000-16zM8 7a1 1 0 011-1h2a1 1 0 110 2H9v1h2a1 1 0 110 2H9v1h2a1 1 0 110 2H9a1 1 0 01-1-1V7z" clip-rule="evenodd" /></svg>
                         <span class="text-xl sm:text-2xl font-black tracking-widest">裏</span>
                     </div>
+
                 </div>
             </div>
         </div>
@@ -238,7 +225,6 @@
     </div>
 
     <script>
-        // --- オーディオ制御 ---
         let audioCtx;
         function initAudio() {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -309,7 +295,6 @@
             }
         }
 
-        // --- コイントスギミック制御 ---
         let isFlipping = false;
         let currentRotation = 0; 
         const coinInner = document.getElementById('coinInner');
@@ -335,7 +320,6 @@
             }, 1500); 
         }
 
-        // --- 先攻・後攻パネル制御 ---
         let isTopFirst = true; 
         const panelA = document.getElementById('panelA');
         const textA = document.getElementById('textA');
@@ -363,7 +347,6 @@
             playClickSound();
         }
 
-        // --- タイマーと目盛りゲージ制御 ---
         const ticksGroup = document.getElementById('ticksGroup');
         const timeDisplayA = document.getElementById('timeDisplayA');
         const timeDisplayB = document.getElementById('timeDisplayB');
@@ -394,13 +377,14 @@
         const glowBlue = 'drop-shadow(0 0 5px #60a5fa) drop-shadow(0 0 15px rgba(59,130,246,0.8))';
         const glowRed = 'drop-shadow(0 0 5px #f87171) drop-shadow(0 0 15px rgba(239,68,68,0.8))';
 
+        // ★ 描画エリアの計算を広げ、光が枠で切られないように再計算
         function initTicks() {
             ticksGroup.innerHTML = '';
             tickElements = [];
-            const centerX = 150;
-            const centerY = 150;
-            const outerRadius = 145; 
-            const innerRadius = 120; 
+            const centerX = 180;
+            const centerY = 180;
+            const outerRadius = 155; 
+            const innerRadius = 130; 
 
             for (let i = 0; i < TOTAL_TICKS; i++) {
                 const angle = (i / TOTAL_TICKS) * (2 * Math.PI) - (Math.PI / 2);
@@ -411,8 +395,8 @@
                 
                 if (i % 5 === 0) {
                     line.setAttribute('stroke-width', '6');
-                    line.setAttribute('x1', centerX + 105 * Math.cos(angle)); 
-                    line.setAttribute('y1', centerY + 105 * Math.sin(angle));
+                    line.setAttribute('x1', centerX + 115 * Math.cos(angle)); 
+                    line.setAttribute('y1', centerY + 115 * Math.sin(angle));
                 } else {
                     line.setAttribute('stroke-width', '3');
                     line.setAttribute('x1', centerX + innerRadius * Math.cos(angle));
@@ -680,16 +664,10 @@
         startPauseBtnB.addEventListener('click', toggleTimer);
         resetBtnB.addEventListener('click', resetTimer);
 
-        // --- PWA: Service Worker の登録 ---
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js')
-                    .then(registration => {
-                        console.log('ServiceWorker registration successful');
-                    })
-                    .catch(err => {
-                        console.log('ServiceWorker registration failed: ', err);
-                    });
+                    .catch(err => console.log('SW setup failed:', err));
             });
         }
 
