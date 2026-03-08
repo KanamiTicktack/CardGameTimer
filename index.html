@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>カードゲーム用 対面タイマー</title>
+    <title>カードゲーム用 対面タイマー（枠線修正版）</title>
     
     <!-- PWA用の設定 -->
     <link rel="manifest" href="./manifest.json">
@@ -14,6 +14,12 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
         
+        * {
+            /* タップ時のハイライトやフォーカス時の枠線を完全に消す */
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
+        }
+
         body {
             font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
             overscroll-behavior: none;
@@ -115,8 +121,6 @@
         <!-- 上半分：相手(上側)の陣地 -->
         <!-- ================================================== -->
         <div class="flex-1 flex flex-col items-center justify-between py-4 sm:py-6 rotate-180 relative border-t-2 border-slate-800/50 bg-gradient-to-t from-slate-900 to-slate-800/30">
-            
-            <!-- ゲージのための余白（中央寄り） -->
             <div class="w-full h-32 sm:h-40 md:h-48 pointer-events-none"></div>
             
             <div class="flex flex-col items-center gap-4 sm:gap-6 z-10">
@@ -147,7 +151,6 @@
         <!-- 下半分：自分(下側)の陣地 -->
         <!-- ================================================== -->
         <div class="flex-1 flex flex-col items-center justify-between py-4 sm:py-6 relative border-t-2 border-slate-800/50 bg-gradient-to-t from-slate-900 to-slate-800/30">
-            
             <div class="w-full h-32 sm:h-40 md:h-48 pointer-events-none"></div>
             
             <div class="flex flex-col items-center gap-4 sm:gap-6 z-10">
@@ -179,13 +182,13 @@
         <!-- ================================================== -->
         <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none z-20">
             
+            <!-- ★修正点: SVG全体にかかっていた drop-shadow クラスを削除しました -->
             <svg id="gaugeSvg" class="w-[85vw] h-[85vw] max-w-[340px] max-h-[340px] sm:max-w-[420px] sm:max-h-[420px]" viewBox="0 0 300 300">
                 <g id="ticksGroup"></g>
             </svg>
 
             <div class="absolute w-24 h-24 sm:w-32 sm:h-32 md:w-36 md:h-36 pointer-events-auto cursor-pointer transition-transform duration-100 active:scale-95" onclick="flipCoin()" title="タップしてコイントス">
                 <div id="coinInner" class="relative w-full h-full transition-transform duration-[1500ms] preserve-3d ease-out shadow-2xl rounded-full" style="transform: rotateY(0deg);">
-                    
                     <div class="absolute inset-0 rounded-full bg-gradient-to-br from-yellow-300 to-yellow-600 border-4 border-yellow-200 flex flex-col items-center justify-center text-yellow-900 backface-hidden shadow-[inset_0_0_15px_rgba(0,0,0,0.4)]">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 sm:h-10 sm:w-10 mb-1" viewBox="0 0 20 20" fill="currentColor"><path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4z" /></svg>
                         <span class="text-xl sm:text-2xl font-black tracking-widest">表</span>
@@ -195,7 +198,6 @@
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 sm:h-10 sm:w-10 mb-1 opacity-80" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 2a8 8 0 100 16 8 8 0 000-16zM8 7a1 1 0 011-1h2a1 1 0 110 2H9v1h2a1 1 0 110 2H9v1h2a1 1 0 110 2H9a1 1 0 01-1-1V7z" clip-rule="evenodd" /></svg>
                         <span class="text-xl sm:text-2xl font-black tracking-widest">裏</span>
                     </div>
-
                 </div>
             </div>
         </div>
@@ -208,7 +210,6 @@
             <p class="text-slate-400 text-sm mb-4">上下にスワイプして選択</p>
             
             <div class="flex items-center gap-6 mb-10 w-full max-w-sm justify-center">
-                
                 <div class="flex flex-col items-center flex-1">
                     <div class="drum-container w-24 bg-slate-800/50 rounded-xl border border-slate-700 relative shadow-inner" id="minDrumContainer">
                         <div class="absolute top-1/2 left-0 w-full h-[50px] -translate-y-1/2 border-t-2 border-b-2 border-blue-500/50 pointer-events-none z-10 shadow-[0_0_10px_rgba(59,130,246,0.3)]"></div>
@@ -226,7 +227,6 @@
                     </div>
                     <span class="text-slate-400 text-sm mt-3 font-bold tracking-widest">秒</span>
                 </div>
-
             </div>
             
             <div class="flex gap-4 w-full max-w-sm">
@@ -357,7 +357,7 @@
         }
 
         window.toggleTurn = function() {
-            if (isRunning) return; // タイマー作動中は入れ替え無効化
+            if (isRunning) return; 
             isTopFirst = !isTopFirst;
             updateTurnPanels();
             playClickSound();
@@ -699,3 +699,5 @@
     </script>
 </body>
 </html>
+
+
