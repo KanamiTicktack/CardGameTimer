@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>カードゲーム用 対面タイマー</title>
+    
+    <!-- PWA用の設定 -->
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <link rel="apple-touch-icon" href="./icon-192.png">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+            overscroll-behavior: none;
+            -webkit-user-select: none;
+            user-select: none;
+            background-color: #0f172a;
+        }
+        
+        .font-mono-num {
+            font-family: 'Roboto Mono', monospace;
+        }
+
+        /* コインの3D回転用CSS */
+        .preserve-3d {
+            transform-style: preserve-3d;
+        }
+        .backface-hidden {
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+        }
+        .rotate-y-180 {
+            transform: rotateY(180deg);
+        }
+
+        /* ドラムロール設定（スワイプ）用CSS */
+        .drum-container {
+            height: 150px;
+            overflow: hidden;
+            position: relative;
+            mask-image: linear-gradient(to bottom, transparent, black 30%, black 70%, transparent);
+            -webkit-mask-image: linear-gradient(to bottom, transparent, black 30%, black 70%, transparent);
+        }
+        
+        .drum-list {
+            position: absolute;
+            top: 50px; 
+            left: 0;
+            width: 100%;
+            transform: translateY(0px);
+            transition: transform 0.1s ease-out;
+        }
+        
+        .drum-list.snap {
+            transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        
+        .drum-item {
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            color: #475569;
+            transition: color 0.2s, font-size 0.2s, font-weight 0.2s;
+        }
+        
+        .drum-item.active {
+            color: #ffffff;
+            font-size: 3.5rem;
+            font-weight: 700;
+        }
+
+        /* 縦画面時の警告画面 */
+        #rotate-warning {
+            display: none;
+        }
+        @media (orientation: landscape) {
+            #rotate-warning {
+                display: flex;
+            }
+            #app-content {
+                display: none;
+            }
+        }
+
+        .blinking {
+            animation: blink 1s infinite;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; color: #f87171; }
+            50% { opacity: 0.5; color: #fca5a5; }
+        }
+    </style>
+</head>
+<body class="text-white w-screen h-screen overflow-hidden relative">
+
+    <div id="rotate-warning" class="absolute inset-0 z-50 bg-slate-900 flex-col items-center justify-center text-center p-6">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mb-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+        </svg>
+        <p class="text-xl font-bold mb-2">端末を縦向きにしてください</p>
+        <p class="text-slate-400 text-sm">テーブルに縦に置いて向かい合って使用します。</p>
+    </div>
+
+    <!-- メインコンテンツ -->
+    <div id="app-content" class="flex flex-col w-full h-full relative">
+
+        <!-- ================================================== -->
+        <!-- 上半分：相手(上側)の陣地 -->
+        <!-- ================================================== -->
+        <div class="flex-1 flex flex-col items-center justify-between py-4 sm:py-6 rotate-180 relative border-t-2 border-slate-800/50 bg-gradient-to-t from-slate-900 to-slate-800/30">
+            
+            <!-- ゲージのための余白（中央寄り） -->
+            <div class="w-full h-32 sm:h-40 md:h-48 pointer-events-none"></div>
+            
+            <div class="flex flex-col items-center gap-4 sm:gap-6 z-10">
+                <div class="flex flex-col items-center cursor-pointer opacity-80 hover:opacity-100 transition-opacity" onclick="openSettings('top')" title="タップして時間を設定">
+                    <span class="text-slate-400 text-xs font-bold tracking-widest mb-1">REMAINING TIME</span>
+                    <div id="timeDisplayA" class="text-5xl sm:text-6xl md:text-7xl font-bold text-slate-100 font-mono-num tabular-nums tracking-tighter drop-shadow-lg">
+                        25:00
+                    </div>
+                </div>
+                
+                <div class="flex gap-6">
+                    <button id="startPauseBtnA" class="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-blue-600/80 hover:bg-blue-500 flex items-center justify-center transition-all active:scale-95 shadow-[0_0_15px_rgba(37,99,235,0.3)] backdrop-blur-sm">
+                        <svg id="playIconA" xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 sm:w-8 sm:h-8 fill-current ml-1" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                        <svg id="pauseIconA" xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 sm:w-8 sm:h-8 fill-current hidden" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                    </button>
+                    <button id="resetBtnA" class="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-slate-700/80 hover:bg-slate-600 flex items-center justify-center transition-all active:scale-95 shadow-lg backdrop-blur-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 sm:w-8 sm:h-8 fill-current" viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
+                    </button>
+                </div>
+            </div>
+            
+            <div id="panelA" class="w-11/12 max-w-sm py-3 sm:py-4 rounded-xl shadow-[0_0_20px_rgba(0,0,0,0.5)] cursor-pointer flex items-center justify-center transition-all duration-300 active:scale-95 border-b-4 border-t border-white/10" onclick="toggleTurn()">
+                <span id="textA" class="text-2xl sm:text-3xl font-bold tracking-widest text-white drop-shadow-md">先攻</span>
+            </div>
+        </div>
+
+        <!-- ================================================== -->
+        <!-- 下半分：自分(下側)の陣地 -->
+        <!-- ================================================== -->
+        <div class="flex-1 flex flex-col items-center justify-between py-4 sm:py-6 relative border-t-2 border-slate-800/50 bg-gradient-to-t from-slate-900 to-slate-800/30">
+            
+            <div class="w-full h-32 sm:h-40 md:h-48 pointer-events-none"></div>
+            
+            <div class="flex flex-col items-center gap-4 sm:gap-6 z-10">
+                <div class="flex flex-col items-center cursor-pointer opacity-80 hover:opacity-100 transition-opacity" onclick="openSettings('bottom')" title="タップして時間を設定">
+                    <span class="text-slate-400 text-xs font-bold tracking-widest mb-1">REMAINING TIME</span>
+                    <div id="timeDisplayB" class="text-5xl sm:text-6xl md:text-7xl font-bold text-slate-100 font-mono-num tabular-nums tracking-tighter drop-shadow-lg">
+                        25:00
+                    </div>
+                </div>
+                
+                <div class="flex gap-6">
+                    <button id="startPauseBtnB" class="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-blue-600/80 hover:bg-blue-500 flex items-center justify-center transition-all active:scale-95 shadow-[0_0_15px_rgba(37,99,235,0.3)] backdrop-blur-sm">
+                        <svg id="playIconB" xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 sm:w-8 sm:h-8 fill-current ml-1" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                        <svg id="pauseIconB" xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 sm:w-8 sm:h-8 fill-current hidden" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                    </button>
+                    <button id="resetBtnB" class="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-slate-700/80 hover:bg-slate-600 flex items-center justify-center transition-all active:scale-95 shadow-lg backdrop-blur-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 sm:w-8 sm:h-8 fill-current" viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
+                    </button>
+                </div>
+            </div>
+            
+            <div id="panelB" class="w-11/12 max-w-sm py-3 sm:py-4 rounded-xl shadow-[0_0_20px_rgba(0,0,0,0.5)] cursor-pointer flex items-center justify-center transition-all duration-300 active:scale-95 border-b-4 border-t border-white/10" onclick="toggleTurn()">
+                <span id="textB" class="text-2xl sm:text-3xl font-bold tracking-widest text-white drop-shadow-md">後攻</span>
+            </div>
+        </div>
+
+        <!-- ================================================== -->
+        <!-- 画面中央：大きく太いネオン目盛り ＆ コイントス -->
+        <!-- ================================================== -->
+        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none z-20">
+            
+            <svg id="gaugeSvg" class="w-[85vw] h-[85vw] max-w-[340px] max-h-[340px] sm:max-w-[420px] sm:max-h-[420px]" viewBox="0 0 300 300">
+                <g id="ticksGroup"></g>
+            </svg>
+
+            <div class="absolute w-24 h-24 sm:w-32 sm:h-32 md:w-36 md:h-36 pointer-events-auto cursor-pointer transition-transform duration-100 active:scale-95" onclick="flipCoin()" title="タップしてコイントス">
+                <div id="coinInner" class="relative w-full h-full transition-transform duration-[1500ms] preserve-3d ease-out shadow-2xl rounded-full" style="transform: rotateY(0deg);">
+                    
+                    <div class="absolute inset-0 rounded-full bg-gradient-to-br from-yellow-300 to-yellow-600 border-4 border-yellow-200 flex flex-col items-center justify-center text-yellow-900 backface-hidden shadow-[inset_0_0_15px_rgba(0,0,0,0.4)]">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 sm:h-10 sm:w-10 mb-1" viewBox="0 0 20 20" fill="currentColor"><path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4z" /></svg>
+                        <span class="text-xl sm:text-2xl font-black tracking-widest">表</span>
+                    </div>
+
+                    <div class="absolute inset-0 rounded-full bg-gradient-to-br from-slate-200 to-slate-500 border-4 border-slate-100 flex flex-col items-center justify-center text-slate-800 backface-hidden rotate-y-180 shadow-[inset_0_0_15px_rgba(0,0,0,0.4)]">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 sm:h-10 sm:w-10 mb-1 opacity-80" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 2a8 8 0 100 16 8 8 0 000-16zM8 7a1 1 0 011-1h2a1 1 0 110 2H9v1h2a1 1 0 110 2H9v1h2a1 1 0 110 2H9a1 1 0 01-1-1V7z" clip-rule="evenodd" /></svg>
+                        <span class="text-xl sm:text-2xl font-black tracking-widest">裏</span>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- ================================================== -->
+        <!-- 時間設定用のオーバーレイ (スワイプ式ドラムロール) -->
+        <!-- ================================================== -->
+        <div id="settingsOverlay" class="absolute inset-0 bg-slate-900/95 backdrop-blur-md flex flex-col items-center justify-center p-4 transition-opacity opacity-0 pointer-events-none z-40 transition-transform duration-300">
+            <h3 class="text-white text-xl font-bold mb-8 drop-shadow-[0_0_10px_rgba(59,130,246,0.5)]">タイマー時間を設定</h3>
+            <p class="text-slate-400 text-sm mb-4">上下にスワイプして選択</p>
+            
+            <div class="flex items-center gap-6 mb-10 w-full max-w-sm justify-center">
+                
+                <div class="flex flex-col items-center flex-1">
+                    <div class="drum-container w-24 bg-slate-800/50 rounded-xl border border-slate-700 relative shadow-inner" id="minDrumContainer">
+                        <div class="absolute top-1/2 left-0 w-full h-[50px] -translate-y-1/2 border-t-2 border-b-2 border-blue-500/50 pointer-events-none z-10 shadow-[0_0_10px_rgba(59,130,246,0.3)]"></div>
+                        <div class="drum-list font-mono-num font-bold" id="minDrumList"></div>
+                    </div>
+                    <span class="text-slate-400 text-sm mt-3 font-bold tracking-widest">分</span>
+                </div>
+                
+                <span class="text-5xl text-slate-500 self-center font-mono-num mb-8">:</span>
+                
+                <div class="flex flex-col items-center flex-1">
+                    <div class="drum-container w-24 bg-slate-800/50 rounded-xl border border-slate-700 relative shadow-inner" id="secDrumContainer">
+                        <div class="absolute top-1/2 left-0 w-full h-[50px] -translate-y-1/2 border-t-2 border-b-2 border-blue-500/50 pointer-events-none z-10 shadow-[0_0_10px_rgba(59,130,246,0.3)]"></div>
+                        <div class="drum-list font-mono-num font-bold" id="secDrumList"></div>
+                    </div>
+                    <span class="text-slate-400 text-sm mt-3 font-bold tracking-widest">秒</span>
+                </div>
+
+            </div>
+            
+            <div class="flex gap-4 w-full max-w-sm">
+                <button onclick="closeSettings()" class="flex-1 py-4 bg-slate-700 hover:bg-slate-600 rounded-xl text-white font-bold transition-colors border border-slate-600">キャンセル</button>
+                <button onclick="saveSettings()" class="flex-1 py-4 bg-blue-600 hover:bg-blue-500 rounded-xl text-white font-bold transition-colors shadow-[0_0_15px_rgba(37,99,235,0.4)]">設定する</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- オーディオ制御 ---
+        let audioCtx;
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function playCoinSound() {
+            initAudio();
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(1500, audioCtx.currentTime); 
+            osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.3);
+            gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.5);
+        }
+
+        function playClickSound() {
+            initAudio();
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(300, audioCtx.currentTime + 0.05);
+            gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.05);
+        }
+
+        function playTickSound() {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(100, audioCtx.currentTime);
+            gainNode.gain.setValueAtTime(0.01, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.02);
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.02);
+        }
+
+        function playBeep() {
+            if (!audioCtx) return;
+            for(let i = 0; i < 3; i++) {
+                setTimeout(() => {
+                    const osc = audioCtx.createOscillator();
+                    const gainNode = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(880, audioCtx.currentTime); 
+                    gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+                    osc.connect(gainNode);
+                    gainNode.connect(audioCtx.destination);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.15);
+                }, i * 200);
+            }
+        }
+
+        // --- コイントスギミック制御 ---
+        let isFlipping = false;
+        let currentRotation = 0; 
+        const coinInner = document.getElementById('coinInner');
+
+        window.flipCoin = function() {
+            if(isFlipping) return;
+            isFlipping = true;
+            playCoinSound();
+
+            const result = Math.random() < 0.5 ? 'front' : 'back';
+            const baseRotations = Math.floor(currentRotation / 360);
+            let nextRotation = (baseRotations + 5) * 360;
+            
+            if (result === 'back') {
+                nextRotation += 180;
+            }
+
+            coinInner.style.transform = `rotateY(${nextRotation}deg)`;
+            currentRotation = nextRotation; 
+
+            setTimeout(() => {
+                isFlipping = false;
+            }, 1500); 
+        }
+
+        // --- 先攻・後攻パネル制御 ---
+        let isTopFirst = true; 
+        const panelA = document.getElementById('panelA');
+        const textA = document.getElementById('textA');
+        const panelB = document.getElementById('panelB');
+        const textB = document.getElementById('textB');
+
+        function updateTurnPanels() {
+            const firstClass = "bg-red-600/90 border-red-500/50 hover:bg-red-500 shadow-[0_0_15px_rgba(220,38,38,0.5)]";
+            const secondClass = "bg-blue-600/90 border-blue-500/50 hover:bg-blue-500 shadow-[0_0_15px_rgba(37,99,235,0.5)]";
+
+            panelA.className = `w-11/12 max-w-sm py-3 sm:py-4 rounded-xl cursor-pointer flex items-center justify-center transition-all duration-300 active:scale-95 border-b-4 border-t border-white/10 ${isTopFirst ? firstClass : secondClass}`;
+            panelB.className = `w-11/12 max-w-sm py-3 sm:py-4 rounded-xl cursor-pointer flex items-center justify-center transition-all duration-300 active:scale-95 border-b-4 border-t border-white/10 ${isTopFirst ? secondClass : firstClass}`;
+
+            textA.textContent = isTopFirst ? "先攻" : "後攻";
+            textB.textContent = isTopFirst ? "後攻" : "先攻";
+
+            textA.style.opacity = '0'; textB.style.opacity = '0';
+            setTimeout(() => { textA.style.opacity = '1'; textB.style.opacity = '1'; }, 50);
+        }
+
+        window.toggleTurn = function() {
+            if (isRunning) return; // タイマー作動中は入れ替え無効化
+            isTopFirst = !isTopFirst;
+            updateTurnPanels();
+            playClickSound();
+        }
+
+        // --- タイマーと目盛りゲージ制御 ---
+        const ticksGroup = document.getElementById('ticksGroup');
+        const timeDisplayA = document.getElementById('timeDisplayA');
+        const timeDisplayB = document.getElementById('timeDisplayB');
+        
+        const startPauseBtnA = document.getElementById('startPauseBtnA');
+        const resetBtnA = document.getElementById('resetBtnA');
+        const playIconA = document.getElementById('playIconA');
+        const pauseIconA = document.getElementById('pauseIconA');
+
+        const startPauseBtnB = document.getElementById('startPauseBtnB');
+        const resetBtnB = document.getElementById('resetBtnB');
+        const playIconB = document.getElementById('playIconB');
+        const pauseIconB = document.getElementById('pauseIconB');
+        
+        let defaultTotalMs = 25 * 60 * 1000;
+        let totalMs = defaultTotalMs;
+        let remainingMs = totalMs;
+        let isRunning = false;
+        let animationFrameId;
+        let lastUpdateTime = 0;
+
+        const TOTAL_TICKS = 60; 
+        let tickElements = [];
+
+        const colorBlue = '#60a5fa'; 
+        const colorRed = '#f87171';  
+        const colorOff = '#1e293b';  
+        const glowBlue = 'drop-shadow(0 0 5px #60a5fa) drop-shadow(0 0 15px rgba(59,130,246,0.8))';
+        const glowRed = 'drop-shadow(0 0 5px #f87171) drop-shadow(0 0 15px rgba(239,68,68,0.8))';
+
+        function initTicks() {
+            ticksGroup.innerHTML = '';
+            tickElements = [];
+            const centerX = 150;
+            const centerY = 150;
+            const outerRadius = 145; 
+            const innerRadius = 120; 
+
+            for (let i = 0; i < TOTAL_TICKS; i++) {
+                const angle = (i / TOTAL_TICKS) * (2 * Math.PI) - (Math.PI / 2);
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                
+                line.setAttribute('x2', centerX + outerRadius * Math.cos(angle));
+                line.setAttribute('y2', centerY + outerRadius * Math.sin(angle));
+                
+                if (i % 5 === 0) {
+                    line.setAttribute('stroke-width', '6');
+                    line.setAttribute('x1', centerX + 105 * Math.cos(angle)); 
+                    line.setAttribute('y1', centerY + 105 * Math.sin(angle));
+                } else {
+                    line.setAttribute('stroke-width', '3');
+                    line.setAttribute('x1', centerX + innerRadius * Math.cos(angle));
+                    line.setAttribute('y1', centerY + innerRadius * Math.sin(angle));
+                }
+                
+                line.setAttribute('stroke-linecap', 'round');
+                line.setAttribute('stroke', colorOff);
+                line.style.transition = 'stroke 0.2s, filter 0.2s';
+                
+                ticksGroup.appendChild(line);
+                tickElements.push(line);
+            }
+        }
+
+        function formatTime(ms) {
+            const totalSeconds = Math.ceil(ms / 1000);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        function updateDisplay() {
+            const timeStr = formatTime(remainingMs);
+            timeDisplayA.textContent = timeStr;
+            timeDisplayB.textContent = timeStr;
+
+            const percent = totalMs > 0 ? remainingMs / totalMs : 0;
+            const activeTicksCount = Math.ceil(percent * TOTAL_TICKS);
+            const isWarning = remainingMs > 0 && remainingMs <= 10000;
+
+            if (isWarning) {
+                timeDisplayA.classList.add('text-red-400'); timeDisplayA.classList.remove('text-slate-100');
+                timeDisplayB.classList.add('text-red-400'); timeDisplayB.classList.remove('text-slate-100');
+            } else {
+                timeDisplayA.classList.remove('text-red-400'); timeDisplayA.classList.add('text-slate-100');
+                timeDisplayB.classList.remove('text-red-400'); timeDisplayB.classList.add('text-slate-100');
+            }
+
+            for (let i = 0; i < TOTAL_TICKS; i++) {
+                if (i < activeTicksCount) {
+                    tickElements[i].setAttribute('stroke', isWarning ? colorRed : colorBlue); 
+                    tickElements[i].style.filter = isWarning ? glowRed : glowBlue;
+                } else {
+                    tickElements[i].setAttribute('stroke', colorOff); 
+                    tickElements[i].style.filter = 'none';
+                }
+            }
+        }
+
+        function updatePlayPauseIcons(isPlaying) {
+            if (isPlaying) {
+                playIconA.classList.add('hidden');
+                pauseIconA.classList.remove('hidden');
+                playIconB.classList.add('hidden');
+                pauseIconB.classList.remove('hidden');
+            } else {
+                playIconA.classList.remove('hidden');
+                pauseIconA.classList.add('hidden');
+                playIconB.classList.remove('hidden');
+                pauseIconB.classList.add('hidden');
+            }
+        }
+
+        function timerLoop(timestamp) {
+            if (!isRunning) return;
+            if (!lastUpdateTime) lastUpdateTime = timestamp;
+            const delta = timestamp - lastUpdateTime;
+            lastUpdateTime = timestamp;
+            remainingMs -= delta;
+
+            if (remainingMs <= 0) {
+                remainingMs = 0;
+                finishTimer();
+            } else {
+                updateDisplay();
+                animationFrameId = requestAnimationFrame(timerLoop);
+            }
+        }
+
+        function toggleTimer() {
+            if (remainingMs <= 0) resetTimer();
+
+            if (isRunning) {
+                isRunning = false;
+                lastUpdateTime = 0;
+                cancelAnimationFrame(animationFrameId);
+                updatePlayPauseIcons(false);
+            } else {
+                if (totalMs === 0) return;
+                initAudio();
+                isRunning = true;
+                updatePlayPauseIcons(true);
+                timeDisplayA.classList.remove('blinking');
+                timeDisplayB.classList.remove('blinking');
+                animationFrameId = requestAnimationFrame(timerLoop);
+            }
+        }
+
+        function resetTimer() {
+            isRunning = false;
+            lastUpdateTime = 0;
+            cancelAnimationFrame(animationFrameId);
+            remainingMs = totalMs;
+            
+            updatePlayPauseIcons(false);
+            timeDisplayA.classList.remove('blinking');
+            timeDisplayB.classList.remove('blinking');
+            
+            updateDisplay();
+        }
+
+        function finishTimer() {
+            isRunning = false;
+            lastUpdateTime = 0;
+            updateDisplay();
+            updatePlayPauseIcons(false);
+            
+            timeDisplayA.classList.add('blinking');
+            timeDisplayB.classList.add('blinking');
+            playBeep();
+        }
+
+        // --- スワイプ式 ドラムロール制御 ---
+        const settingsOverlay = document.getElementById('settingsOverlay');
+        const ITEM_HEIGHT = 50; 
+
+        class DrumSelector {
+            constructor(containerId, listId, maxValue) {
+                this.container = document.getElementById(containerId);
+                this.list = document.getElementById(listId);
+                this.maxValue = maxValue;
+                this.currentValue = 0;
+                this.offsetY = 0;
+                this.startY = 0;
+                this.startOffsetY = 0;
+                this.isDragging = false;
+                
+                this.initDOM();
+                this.addEvents();
+            }
+
+            initDOM() {
+                this.list.innerHTML = '';
+                for (let i = 0; i <= this.maxValue; i++) {
+                    const item = document.createElement('div');
+                    item.className = 'drum-item';
+                    item.textContent = i.toString().padStart(2, '0');
+                    this.list.appendChild(item);
+                }
+                this.updateActiveItem();
+            }
+
+            setValue(val) {
+                this.currentValue = Math.max(0, Math.min(val, this.maxValue));
+                this.offsetY = -this.currentValue * ITEM_HEIGHT;
+                this.list.style.transform = `translateY(${this.offsetY}px)`;
+                this.updateActiveItem();
+            }
+
+            addEvents() {
+                this.container.addEventListener('touchstart', this.onStart.bind(this), {passive: false});
+                document.addEventListener('touchmove', this.onMove.bind(this), {passive: false});
+                document.addEventListener('touchend', this.onEnd.bind(this));
+                
+                this.container.addEventListener('mousedown', this.onStart.bind(this));
+                document.addEventListener('mousemove', this.onMove.bind(this));
+                document.addEventListener('mouseup', this.onEnd.bind(this));
+            }
+
+            onStart(e) {
+                this.isDragging = true;
+                this.list.classList.remove('snap');
+                this.startY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+                this.startOffsetY = this.offsetY;
+                initAudio(); 
+            }
+
+            onMove(e) {
+                if (!this.isDragging) return;
+                e.preventDefault(); 
+                
+                const currentY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+                const diff = currentY - this.startY;
+                
+                this.offsetY = this.startOffsetY + diff * 1.5; 
+                
+                const minOffset = -this.maxValue * ITEM_HEIGHT;
+                const maxOffset = 0;
+                
+                if (this.offsetY > maxOffset + ITEM_HEIGHT) this.offsetY = maxOffset + ITEM_HEIGHT;
+                if (this.offsetY < minOffset - ITEM_HEIGHT) this.offsetY = minOffset - ITEM_HEIGHT;
+
+                this.list.style.transform = `translateY(${this.offsetY}px)`;
+                
+                const tempIndex = Math.round(-this.offsetY / ITEM_HEIGHT);
+                const validIndex = Math.max(0, Math.min(tempIndex, this.maxValue));
+                if (this.currentValue !== validIndex) {
+                    this.currentValue = validIndex;
+                    playTickSound();
+                    this.updateActiveItem();
+                }
+            }
+
+            onEnd(e) {
+                if (!this.isDragging) return;
+                this.isDragging = false;
+                this.list.classList.add('snap');
+                
+                let index = Math.round(-this.offsetY / ITEM_HEIGHT);
+                index = Math.max(0, Math.min(index, this.maxValue));
+                
+                this.setValue(index);
+            }
+
+            updateActiveItem() {
+                const items = this.list.querySelectorAll('.drum-item');
+                items.forEach((item, index) => {
+                    if (index === this.currentValue) {
+                        item.classList.add('active');
+                    } else {
+                        item.classList.remove('active');
+                    }
+                });
+            }
+        }
+
+        const minDrum = new DrumSelector('minDrumContainer', 'minDrumList', 99);
+        const secDrum = new DrumSelector('secDrumContainer', 'secDrumList', 59);
+
+        window.openSettings = function(side) {
+            if (isRunning) toggleTimer(); 
+            
+            if (side === 'top') {
+                settingsOverlay.classList.add('rotate-180');
+            } else {
+                settingsOverlay.classList.remove('rotate-180');
+            }
+            
+            const totalSeconds = Math.ceil(totalMs / 1000);
+            minDrum.setValue(Math.floor(totalSeconds / 60));
+            secDrum.setValue(totalSeconds % 60);
+            
+            settingsOverlay.classList.remove('opacity-0', 'pointer-events-none');
+            settingsOverlay.classList.add('opacity-100', 'pointer-events-auto');
+        }
+
+        window.closeSettings = function() {
+            settingsOverlay.classList.remove('opacity-100', 'pointer-events-auto');
+            settingsOverlay.classList.add('opacity-0', 'pointer-events-none');
+        }
+
+        window.saveSettings = function() {
+            const min = minDrum.currentValue;
+            const sec = secDrum.currentValue;
+            totalMs = (min * 60 + sec) * 1000;
+            if (totalMs === 0) totalMs = 1000; 
+            
+            closeSettings();
+            resetTimer();
+        }
+
+        startPauseBtnA.addEventListener('click', toggleTimer);
+        resetBtnA.addEventListener('click', resetTimer);
+        startPauseBtnB.addEventListener('click', toggleTimer);
+        resetBtnB.addEventListener('click', resetTimer);
+
+        // --- PWA: Service Worker の登録 ---
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(registration => {
+                        console.log('ServiceWorker registration successful');
+                    })
+                    .catch(err => {
+                        console.log('ServiceWorker registration failed: ', err);
+                    });
+            });
+        }
+
+        updateTurnPanels();
+        initTicks();
+        updateDisplay();
+    </script>
+</body>
+</html>
